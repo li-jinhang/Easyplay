@@ -1,11 +1,105 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>我的小游戏合集</title>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #333;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            width: 100%;
+            padding: 2rem 0;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 0 20px;
+        }
+
+        .game-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .game-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary-color);
+        }
+
+        .status-tag {
+            font-size: 0.8rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #eee;
+            color: #666;
+        }
+
+        footer {
+            margin-top: auto;
+            padding: 2rem;
+            color: #888;
+        }
+    </style>
 </head>
 <body>
-    
+
+    <header>
+        <h1>🎮 我的 Git 练习游戏厅</h1>
+        <p>通过开发小游戏，掌握 VS Code 与 Git 操作</p>
+    </header>
+
+    <div class="container">
+        <div class="game-card" onclick="alert('游戏开发中...')">
+            <h3>🔢 猜数字</h3>
+            <span class="status-tag">待开发</span>
+        </div>
+
+        <div class="game-card" onclick="alert('暂未上线')">
+            <h3>🐍 贪吃蛇</h3>
+            <span class="status-tag">待开发</span>
+        </div>
+
+        <div class="game-card" onclick="alert('敬请期待')">
+            <h3>🧩 2048</h3>
+            <span class="status-tag">待开发</span>
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2026 由我亲手构建 | Git 学习中...</p>
+    </footer>
+
+    <script>
+        console.log("控制台已就绪！这是你的第一个 Git 项目测试。");
+    </script>
 </body>
 </html>
