@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>猜数字游戏 - 游戏厅</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; }
+        .game-box { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: 50px; text-align: center; }
+        input { padding: 10px; font-size: 1rem; width: 60px; text-align: center; }
+        button { padding: 10px 20px; font-size: 1rem; cursor: pointer; background: #4a90e2; color: white; border: none; border-radius: 5px; }
+        .message { margin-top: 20px; font-weight: bold; min-height: 1.2em; }
+        .back-link { margin-top: 20px; display: block; color: #666; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+    <div class="game-box">
+        <h1>🔢 猜数字 (1-100)</h1>
+        <p>我已经想好了一个数字，你猜是多少？</p>
+        <input type="number" id="guessInput" min="1" max="100">
+        <button onclick="checkGuess()">提交</button>
+        <div class="message" id="message"></div>
+        <button id="resetBtn" style="display:none; margin-top: 10px;" onclick="resetGame()">再玩一次</button>
+        
+        <a href="../index.html" class="back-link">← 返回大厅</a>
+    </div>
+
+    <script>
+        let targetNumber = Math.floor(Math.random() * 100) + 1;
+        let attempts = 0;
+
+        function checkGuess() {
+            const guess = Number(document.getElementById('guessInput').value);
+            const message = document.getElementById('message');
+            const resetBtn = document.getElementById('resetBtn');
+            attempts++;
+
+            if (!guess || guess < 1 || guess > 100) {
+                message.textContent = "请输入 1 到 100 之间的有效数字！";
+                message.style.color = "red";
+            } else if (guess === targetNumber) {
+                message.textContent = `🎉 恭喜！你用了 ${attempts} 次猜中了数字 ${targetNumber}！`;
+                message.style.color = "green";
+                resetBtn.style.display = "inline-block";
+            } else if (guess < targetNumber) {
+                message.textContent = "太低了，再试一次！";
+                message.style.color = "orange";
+            } else {
+                message.textContent = "太高了，再试一次！";
+                message.style.color = "orange";
+            }
+        }
+
+        function resetGame() {
+            targetNumber = Math.floor(Math.random() * 100) + 1;
+            attempts = 0;
+            document.getElementById('message').textContent = "";
+            document.getElementById('guessInput').value = "";
+            document.getElementById('resetBtn').style.display = "none";
+        }
+    </script>
+</body>
+</html>
