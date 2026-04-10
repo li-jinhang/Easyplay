@@ -247,7 +247,7 @@
                     onFail({
                         status: 0,
                         data: {
-                            error: "无法连接认证服务，请确认 auth-system 已启动。"
+                            error: "无法连接认证服务，请确认 npm 服务已启动。"
                         }
                     });
                     return;
