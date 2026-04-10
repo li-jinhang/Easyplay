@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>2048 | 我的小游戏合集</title>
+    <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+    <main class="game-page">
+        <header class="top-bar">
+            <div class="title-wrap">
+                <h1>2048</h1>
+                <p>合并数字，目标是到达 2048。</p>
+            </div>
+            <div class="score-wrap">
+                <div class="score-card">
+                    <span>分数</span>
+                    <strong id="score">0</strong>
+                </div>
+                <div class="score-card">
+                    <span>最高分</span>
+                    <strong id="best-score">0</strong>
+                </div>
+            </div>
+        </header>
+
+        <section class="controls">
+            <p>使用键盘方向键控制方块移动。</p>
+            <div class="control-buttons">
+                <button id="restart-btn" type="button">重新开始</button>
+                <a href="../index.html" class="back-link">返回首页</a>
+            </div>
+        </section>
+
+        <section class="board-shell" aria-label="2048 游戏棋盘">
+            <div class="board" id="board">
+                <div class="grid-background" aria-hidden="true" id="grid-background"></div>
+                <div class="tiles-layer" id="tiles-layer"></div>
+            </div>
+        </section>
+    </main>
+
+    <div class="overlay hidden" id="overlay" role="dialog" aria-modal="true">
+        <div class="overlay-card">
+            <h2 id="overlay-title">游戏结束</h2>
+            <p id="overlay-desc">没有可用移动，点击按钮重新开始。</p>
+            <button id="overlay-restart-btn" type="button">再来一局</button>
+        </div>
+    </div>
+
+    <script type="module" src="./js/main.js"></script>
+</body>
+</html>

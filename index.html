@@ -30,6 +30,78 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
+        .header-inner {
+            width: min(960px, calc(100% - 40px));
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .header-text {
+            text-align: left;
+        }
+
+        .header-text h1 {
+            margin: 0;
+            font-size: 1.9rem;
+        }
+
+        .header-text p {
+            margin: 8px 0 0;
+            opacity: 0.92;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        .login-state {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.95);
+            min-height: 1.2rem;
+            white-space: nowrap;
+        }
+
+        .btn-open-login {
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            background: #ffffff;
+            color: #1f4d88;
+            border-radius: 999px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: transform 0.18s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        }
+
+        .btn-open-login:hover {
+            background-color: #f2f8ff;
+            box-shadow: 0 6px 18px rgba(13, 63, 125, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .btn-open-login:active {
+            transform: translateY(0);
+            box-shadow: 0 3px 10px rgba(13, 63, 125, 0.18);
+            background-color: #e4f0ff;
+        }
+
+        .btn-open-login:focus-visible,
+        .btn-close-modal:focus-visible,
+        .btn-login:focus-visible,
+        .btn-register:focus-visible,
+        .btn-register-trigger:focus-visible,
+        .forgot-link:focus-visible {
+            outline: 3px solid rgba(255, 255, 255, 0.55);
+            outline-offset: 2px;
+        }
+
         .container {
             max-width: 800px;
             margin: 2rem auto;
@@ -37,6 +109,220 @@
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
             padding: 0 20px;
+        }
+
+        .login-modal {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(11, 31, 56, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.24s ease, visibility 0.24s ease;
+            z-index: 40;
+        }
+
+        .login-modal.is-open {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            width: min(420px, 90vw);
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            background: var(--card-bg);
+            border-radius: 14px;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+            padding: 20px 20px 18px;
+            border: 1px solid #dde9f5;
+            transform: translateY(14px) scale(0.98);
+            transition: transform 0.24s ease;
+        }
+
+        .login-modal.is-open .modal-card {
+            transform: translateY(0) scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: #1f4d88;
+        }
+
+        .btn-close-modal {
+            border: none;
+            background: #edf4fb;
+            color: #31567f;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.1rem;
+            line-height: 1;
+            transition: background-color 0.2s ease, transform 0.15s ease;
+        }
+
+        .btn-close-modal:hover {
+            background-color: #dbeaf9;
+        }
+
+        .btn-close-modal:active {
+            transform: scale(0.96);
+        }
+
+        .login-tip {
+            margin: 0 0 14px;
+            color: #666;
+            font-size: 0.92rem;
+        }
+
+        .login-form {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 0.9rem;
+            color: #4b5d73;
+        }
+
+        .form-group input {
+            border: 1px solid #c8d6e6;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-group input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
+        }
+
+        .login-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-login {
+            border: none;
+            background: var(--primary-color);
+            color: #fff;
+            border-radius: 8px;
+            padding: 10px 18px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: background-color 0.2s;
+        }
+
+        .btn-login:hover {
+            background: #3b7ecc;
+        }
+
+        .btn-login:active {
+            background: #336fb6;
+        }
+
+        .btn-login:disabled {
+            cursor: not-allowed;
+            background: #9abce3;
+        }
+
+        .btn-register,
+        .btn-register-trigger {
+            border: 1px solid #94b5d8;
+            background: #eff5fc;
+            color: #2f5f93;
+            border-radius: 8px;
+            padding: 10px 18px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: background-color 0.2s;
+        }
+
+        .btn-register:hover,
+        .btn-register-trigger:hover {
+            background: #deecfa;
+        }
+
+        .btn-register:active,
+        .btn-register-trigger:active {
+            background: #d2e4f7;
+        }
+
+        .btn-register:disabled,
+        .btn-register-trigger:disabled {
+            cursor: not-allowed;
+            color: #8096ae;
+            background: #eef2f6;
+            border-color: #cad8e6;
+        }
+
+        .forgot-link {
+            margin-left: auto;
+            font-size: 0.88rem;
+            color: #356ca8;
+            text-decoration: none;
+        }
+
+        .forgot-link:hover {
+            text-decoration: underline;
+        }
+
+        .login-message {
+            margin-top: 10px;
+            font-size: 0.92rem;
+            min-height: 1.3rem;
+        }
+
+        .login-message.success {
+            color: #1b5e20;
+        }
+
+        .login-message.error {
+            color: #c62828;
+        }
+
+        .field-error {
+            font-size: 0.82rem;
+            min-height: 1rem;
+            color: #c62828;
+        }
+
+        .form-group input.invalid {
+            border-color: #d04646;
+            box-shadow: 0 0 0 3px rgba(208, 70, 70, 0.16);
+        }
+
+        .modal-switch-tip {
+            margin: 6px 0 2px;
+            font-size: 0.88rem;
+            color: #5a6d82;
         }
 
         .game-card {
@@ -68,29 +354,134 @@
             padding: 2rem;
             color: #888;
         }
+
+        @media (max-width: 900px) {
+            .header-inner {
+                justify-content: center;
+            }
+
+            .header-text {
+                text-align: center;
+                width: 100%;
+            }
+
+            .header-actions {
+                width: 100%;
+                justify-content: center;
+                margin-left: 0;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .modal-card {
+                width: 90vw;
+                padding: 16px;
+            }
+
+            .login-actions {
+                gap: 8px;
+            }
+        }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>🎮 我的 Git 练习游戏厅</h1>
-        <p>通过开发小游戏，掌握 VS Code 与 Git 操作</p>
+        <div class="header-inner">
+            <div class="header-text">
+                <h1>小游戏算法实现</h1>
+                <p>Git操作练习与实时交互</p>
+            </div>
+            <div class="header-actions">
+                <span id="loginState" class="login-state" aria-live="polite"></span>
+                <button id="openLoginBtn" class="btn-open-login" type="button" aria-haspopup="dialog" aria-controls="loginModal">登录</button>
+            </div>
+        </div>
     </header>
 
+    <div id="loginModal" class="login-modal" aria-hidden="true">
+        <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="loginDialogTitle">
+            <div class="modal-header">
+                <h2 id="loginDialogTitle">用户登录</h2>
+                <button id="closeLoginBtn" class="btn-close-modal" type="button" aria-label="关闭登录窗口">×</button>
+            </div>
+            <p class="login-tip">仅首页提供登录能力，游戏子页面依旧可直接访问，无需登录。</p>
+            <form id="loginForm" class="login-form" novalidate>
+                <div class="form-group">
+                    <label for="username">用户名</label>
+                    <input id="username" name="username" type="text" maxlength="32" autocomplete="username" placeholder="请输入用户名">
+                </div>
+                <div class="form-group">
+                    <label for="password">密码（8位）</label>
+                    <input id="password" name="password" type="password" maxlength="8" autocomplete="current-password" placeholder="请输入8位密码">
+                </div>
+                <div class="login-actions">
+                    <button id="loginBtn" class="btn-login" type="submit">登录</button>
+                    <button id="openRegisterFromLoginBtn" class="btn-register-trigger" type="button">注册</button>
+                    <a class="forgot-link" href="javascript:void(0)" role="button">忘记密码？</a>
+                </div>
+            </form>
+            <div id="loginMessage" class="login-message" aria-live="polite"></div>
+        </section>
+    </div>
+
+    <div id="registerModal" class="login-modal" aria-hidden="true">
+        <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="registerDialogTitle">
+            <div class="modal-header">
+                <h2 id="registerDialogTitle">用户注册</h2>
+                <button id="closeRegisterBtn" class="btn-close-modal" type="button" aria-label="关闭注册窗口">×</button>
+            </div>
+            <p class="login-tip">请填写完整信息完成注册，密码需为 8 位。</p>
+            <form id="registerForm" class="login-form" novalidate>
+                <div class="form-group">
+                    <label for="registerUsername">用户名</label>
+                    <input id="registerUsername" name="registerUsername" type="text" maxlength="32" autocomplete="username" placeholder="3-32位字母/数字/下划线">
+                    <div id="registerUsernameError" class="field-error" aria-live="polite"></div>
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail">邮箱</label>
+                    <input id="registerEmail" name="registerEmail" type="email" maxlength="128" autocomplete="email" placeholder="请输入常用邮箱">
+                    <div id="registerEmailError" class="field-error" aria-live="polite"></div>
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">密码（8位）</label>
+                    <input id="registerPassword" name="registerPassword" type="password" maxlength="8" autocomplete="new-password" placeholder="请输入8位密码">
+                    <div id="registerPasswordError" class="field-error" aria-live="polite"></div>
+                </div>
+                <div class="form-group">
+                    <label for="registerConfirmPassword">确认密码</label>
+                    <input id="registerConfirmPassword" name="registerConfirmPassword" type="password" maxlength="8" autocomplete="new-password" placeholder="请再次输入密码">
+                    <div id="registerConfirmPasswordError" class="field-error" aria-live="polite"></div>
+                </div>
+                <div class="login-actions">
+                    <button id="registerBtn" class="btn-register" type="submit">提交注册</button>
+                    <button id="backToLoginBtn" class="btn-register-trigger" type="button">返回登录</button>
+                </div>
+            </form>
+            <p class="modal-switch-tip">注册成功后将自动返回登录并预填用户名。</p>
+            <div id="registerMessage" class="login-message" aria-live="polite"></div>
+        </section>
+    </div>
+
     <div class="container">
-        <div class="game-card" onclick="location.href='./guess-number/index.html'">
+        <div class="game-card" data-route="./guess-number/index.html" role="button" tabindex="0">
             <h3>🔢 猜数字</h3>
             <span class="status-tag" style="background: #e1f5fe; color: #01579b;">已上线</span>
         </div>
 
-        <div class="game-card" onclick="alert('暂未上线')">
+        <div class="game-card" data-route="./snake-game/index.html" role="button" tabindex="0">
             <h3>🐍 贪吃蛇</h3>
-            <span class="status-tag">待开发</span>
+            <span class="status-tag" style="background: #fff3e0; color: #e65100;">已上线</span>
         </div>
 
-        <div class="game-card" onclick="alert('敬请期待')">
+        <div class="game-card" data-route="./game-2048/index.html" role="button" tabindex="0">
             <h3>🧩 2048</h3>
-            <span class="status-tag">待开发</span>
+            <span class="status-tag" style="background: #e8f5e9; color: #1b5e20;">已上线</span>
+        </div>
+
+        <div class="game-card" data-route="./chinese-chess/index.html" role="button" tabindex="0">
+            <h3>♟️ 在线象棋</h3>
+            <span class="status-tag" style="background: #f3e5f5; color: #6a1b9a;">已上线</span>
         </div>
     </div>
 
@@ -98,8 +489,6 @@
         <p>© 2026 由我亲手构建 | Git 学习中...</p>
     </footer>
 
-    <script>
-        console.log("控制台已就绪！这是你的第一个 Git 项目测试。");
-    </script>
+    <script src="./main.js"></script>
 </body>
 </html>
