@@ -17,6 +17,9 @@ const HOT_RELOAD_SCRIPT = `
   })();
 </script>
 `;
+const HTML_PATH_CACHE_TTL_MS = IS_PRODUCTION ? 10000 : 1000;
+const MAX_HTML_PATH_CACHE_SIZE = 2048;
+const htmlPathCache = new Map();
 
 function hasStaticAssetExt(requestPath) {
   return /\.[a-zA-Z0-9]+$/.test(requestPath);
@@ -43,27 +46,64 @@ function getSafeAbsolutePath(requestPath) {
   return absolutePath;
 }
 
+function getCachedHtmlPath(requestPath) {
+  const entry = htmlPathCache.get(requestPath);
+  if (!entry) {
+    return undefined;
+  }
+  if (entry.expiresAt <= Date.now()) {
+    htmlPathCache.delete(requestPath);
+    return undefined;
+  }
+  return entry.value;
+}
+
+function setCachedHtmlPath(requestPath, value) {
+  if (!htmlPathCache.has(requestPath) && htmlPathCache.size >= MAX_HTML_PATH_CACHE_SIZE) {
+    const oldest = htmlPathCache.keys().next().value;
+    if (oldest !== undefined) {
+      htmlPathCache.delete(oldest);
+    }
+  }
+  htmlPathCache.set(requestPath, {
+    value,
+    expiresAt: Date.now() + HTML_PATH_CACHE_TTL_MS,
+  });
+  return value;
+}
+
 function resolveHtmlPathForRequest(requestPath) {
+  const cached = getCachedHtmlPath(requestPath);
+  if (cached !== undefined) {
+    return cached;
+  }
+
   const absolutePath = getSafeAbsolutePath(requestPath);
   if (!absolutePath) {
-    return null;
+    return setCachedHtmlPath(requestPath, null);
   }
 
   if (fs.existsSync(absolutePath)) {
     const stat = fs.statSync(absolutePath);
     if (stat.isDirectory()) {
       const indexFile = path.join(absolutePath, "index.html");
-      return fs.existsSync(indexFile) ? indexFile : null;
+      return setCachedHtmlPath(
+        requestPath,
+        fs.existsSync(indexFile) ? indexFile : null
+      );
     }
-    return absolutePath.endsWith(".html") ? absolutePath : null;
+    return setCachedHtmlPath(
+      requestPath,
+      absolutePath.endsWith(".html") ? absolutePath : null
+    );
   }
 
   if (!path.extname(absolutePath)) {
     const htmlFile = `${absolutePath}.html`;
-    return fs.existsSync(htmlFile) ? htmlFile : null;
+    return setCachedHtmlPath(requestPath, fs.existsSync(htmlFile) ? htmlFile : null);
   }
 
-  return null;
+  return setCachedHtmlPath(requestPath, null);
 }
 
 function setCacheHeader(res, requestPath, isHtml) {
@@ -126,6 +166,7 @@ function createHotReloadManager() {
   }
 
   function broadcastReload() {
+    htmlPathCache.clear();
     for (const client of clients) {
       client.write("event: reload\ndata: changed\n\n");
     }

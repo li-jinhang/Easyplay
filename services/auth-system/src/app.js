@@ -1,7 +1,13 @@
 const express = require("express");
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
-const { ENABLE_ACCESS_LOG, ENABLE_FRONTEND, TRUST_PROXY } = require("./config");
+const {
+  ENABLE_ACCESS_LOG,
+  ENABLE_FRONTEND,
+  RATE_LIMIT_CLEANUP_INTERVAL_MS,
+  RATE_LIMIT_MAX_BUCKETS,
+  TRUST_PROXY,
+} = require("./config");
 const { accessLogger } = require("./middleware/accessLogger");
 const { corsMiddleware } = require("./middleware/cors");
 const { createHotReloadManager, registerFrontend } = require("./frontendServer");
@@ -38,6 +44,8 @@ app.use(
   createRateLimiter({
     windowMs: 60 * 1000,
     maxRequests: 180,
+    cleanupIntervalMs: RATE_LIMIT_CLEANUP_INTERVAL_MS,
+    maxBuckets: RATE_LIMIT_MAX_BUCKETS,
   })
 );
 app.use("/api", authRoutes);
