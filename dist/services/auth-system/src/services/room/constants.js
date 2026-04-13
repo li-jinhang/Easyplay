@@ -1,0 +1,1 @@
+"use strict";const s={WAITING:"waiting",PLAYING:"playing",FINISHED:"finished"},t="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",A=100;module.exports={ROOM_STATUS:s,ROOM_CODE_CHARS:t,MAX_CHAT_HISTORY:A};

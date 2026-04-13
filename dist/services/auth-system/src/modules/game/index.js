@@ -1,0 +1,1 @@
+"use strict";const a=require("../../routes/gameRoutes"),{hydrateRoomsFromDatabase:o}=require("../../services/roomService"),{initGameSocket:s}=require("../../websocket/gameSocket");function r(e){e.use(a)}async function n(){await o()}function c(e){const t=s(e);return{close:()=>t.close()}}module.exports={registerGameApi:r,bootstrapGameDomain:n,attachGameRealtime:c};

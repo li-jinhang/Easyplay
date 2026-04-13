@@ -1,0 +1,1 @@
+const{ENABLE_FRONTEND:r}=require("../../config"),{createHotReloadManager:o,registerFrontend:a}=require("../../frontendServer");function n(){const t=o();return{register(e){r&&a(e,t)},start(){t.startWatch()},stop(){t.stopWatch()},hotReloadManager:t}}module.exports={createStaticHostingModule:n};

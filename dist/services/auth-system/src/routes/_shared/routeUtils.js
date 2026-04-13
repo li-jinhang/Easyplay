@@ -1,0 +1,1 @@
+"use strict";const{validationResult:i}=require("express-validator"),{AppError:o}=require("../../errors");function u(e){return(t,s,r)=>Promise.resolve(e(t,s,r)).catch(r)}function a(e){return[...e,(t,s,r)=>{const n=i(t);return n.isEmpty()?r():r(new o(400,n.array()[0].msg))}]}module.exports={asyncHandler:u,validate:a};

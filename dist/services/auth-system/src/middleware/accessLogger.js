@@ -1,0 +1,1 @@
+function c(s,t,o){const e=process.hrtime.bigint();t.on("finish",()=>{const i=Number(process.hrtime.bigint()-e)/1e6,n=[`[${new Date().toISOString()}]`,s.ip,`"${s.method} ${s.originalUrl} HTTP/${s.httpVersion}"`,t.statusCode,`${i.toFixed(2)}ms`].join(" ");console.log(n)}),o()}module.exports={accessLogger:c};
