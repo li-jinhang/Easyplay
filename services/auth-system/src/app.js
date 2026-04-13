@@ -1,9 +1,11 @@
 const express = require("express");
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
+const path = require("path");
 const {
   ENABLE_ACCESS_LOG,
   ENABLE_FRONTEND,
+  FRONTEND_ROOT,
   RATE_LIMIT_CLEANUP_INTERVAL_MS,
   RATE_LIMIT_MAX_BUCKETS,
   TRUST_PROXY,
@@ -39,8 +41,8 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.use(
-  "/api",
+const apiRouter = express.Router();
+apiRouter.use(
   createRateLimiter({
     windowMs: 60 * 1000,
     maxRequests: 180,
@@ -48,8 +50,15 @@ app.use(
     maxBuckets: RATE_LIMIT_MAX_BUCKETS,
   })
 );
-app.use("/api", authRoutes);
-app.use("/api", gameRoutes);
+apiRouter.use(authRoutes);
+apiRouter.use(gameRoutes);
+
+app.use("/api", apiRouter);
+
+const frontendRootName = path.basename(FRONTEND_ROOT).trim();
+if (frontendRootName) {
+  app.use(`/${frontendRootName}/api`, apiRouter);
+}
 
 if (ENABLE_FRONTEND) {
   registerFrontend(app, hotReloadManager);

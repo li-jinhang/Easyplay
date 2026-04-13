@@ -30,10 +30,25 @@ describe("Frontend interaction integration", () => {
     expect(res.text).toContain('querySelectorAll(".game-card[data-route]")');
   });
 
+  test("GET /Easyplay/main.js should map to frontend root script for subpath deploy", async () => {
+    const res = await request(app).get("/Easyplay/main.js");
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/javascript/);
+    expect(res.text).toContain('querySelectorAll(".game-card[data-route]")');
+  });
+
   test("GET /health should keep backend API available", async () => {
     const res = await request(app).get("/health");
 
     expect(res.statusCode).toBe(200);
     expect(res.body.status).toBe("ok");
+  });
+
+  test("POST /Easyplay/api/login should route to API under subpath deploy", async () => {
+    const res = await request(app).post("/Easyplay/api/login").send({});
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toHaveProperty("error");
   });
 });

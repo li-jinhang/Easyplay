@@ -10,16 +10,16 @@ const {
 } = require("./config");
 
 const HOT_RELOAD_SCRIPT = `
-<script>
-  (() => {
-    const source = new EventSource("/__hmr");
-    source.addEventListener("reload", () => window.location.reload());
-  })();
-</script>
+<script src="/__hmr-client.js" defer></script>
 `;
+const HOT_RELOAD_CLIENT_SCRIPT = `(() => {
+  const source = new EventSource("./__hmr");
+  source.addEventListener("reload", () => window.location.reload());
+})();`;
 const HTML_PATH_CACHE_TTL_MS = IS_PRODUCTION ? 10000 : 1000;
 const MAX_HTML_PATH_CACHE_SIZE = 2048;
 const htmlPathCache = new Map();
+const FRONTEND_ROOT_NAME = path.basename(FRONTEND_ROOT).toLowerCase();
 
 function hasStaticAssetExt(requestPath) {
   return /\.[a-zA-Z0-9]+$/.test(requestPath);
@@ -44,6 +44,37 @@ function getSafeAbsolutePath(requestPath) {
   }
 
   return absolutePath;
+}
+
+function getPrefixedFallbackPath(requestPath) {
+  if (!FRONTEND_ROOT_NAME || requestPath === "/") {
+    return null;
+  }
+
+  const segments = String(requestPath).split("/").filter(Boolean);
+  if (segments.length === 0 || segments[0].toLowerCase() !== FRONTEND_ROOT_NAME) {
+    return null;
+  }
+
+  const stripped = `/${segments.slice(1).join("/")}`;
+  return stripped === "/" || stripped === "" ? "/" : stripped;
+}
+
+function hasFrontendTarget(requestPath) {
+  const absolutePath = getSafeAbsolutePath(requestPath);
+  if (!absolutePath) {
+    return false;
+  }
+
+  if (fs.existsSync(absolutePath)) {
+    return true;
+  }
+
+  if (!path.extname(absolutePath)) {
+    return fs.existsSync(`${absolutePath}.html`);
+  }
+
+  return false;
 }
 
 function getCachedHtmlPath(requestPath) {
@@ -228,8 +259,29 @@ function registerFrontend(app, hotReloadManager) {
   }
 
   if (hotReloadManager.enabled) {
-    app.get("/__hmr", hotReloadManager.sseHandler);
+    app.get(/\/__hmr$/, hotReloadManager.sseHandler);
+    app.get(/\/__hmr-client\.js$/, (req, res) => {
+      res.type("application/javascript");
+      res.setHeader("Cache-Control", "no-cache");
+      res.status(200).send(HOT_RELOAD_CLIENT_SCRIPT);
+    });
   }
+
+  app.use((req, res, next) => {
+    if (!["GET", "HEAD"].includes(req.method) || req.path.startsWith("/api")) {
+      return next();
+    }
+
+    const fallbackPath = getPrefixedFallbackPath(req.path);
+    if (!fallbackPath || fallbackPath === req.path || !hasFrontendTarget(fallbackPath)) {
+      return next();
+    }
+
+    const queryIndex = req.url.indexOf("?");
+    const query = queryIndex >= 0 ? req.url.slice(queryIndex) : "";
+    req.url = `${fallbackPath}${query}`;
+    return next();
+  });
 
   app.get(/.*/, (req, res, next) => {
     if (!["GET", "HEAD"].includes(req.method) || req.path.startsWith("/api")) {
