@@ -1,10 +1,11 @@
 "use strict";
 
 const express = require("express");
-const { body, param, validationResult } = require("express-validator");
+const { body, param } = require("express-validator");
 const { AppError } = require("../errors");
 const { requireAuth } = require("../middleware/auth");
 const { findById } = require("../models/userModel");
+const { asyncHandler, validate } = require("./_shared/routeUtils");
 const {
   SIDES,
   createRoom,
@@ -16,23 +17,6 @@ const {
 } = require("../services/roomService");
 
 const router = express.Router();
-
-function asyncHandler(fn) {
-  return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
-}
-
-function validate(rules) {
-  return [
-    ...rules,
-    (req, res, next) => {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return next(new AppError(400, errors.array()[0].msg));
-      }
-      return next();
-    },
-  ];
-}
 
 async function loadCurrentUser(req) {
   const user = await findById(req.auth.sub);

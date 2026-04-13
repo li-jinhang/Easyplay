@@ -2,11 +2,19 @@
 
 const crypto = require("crypto");
 const { AppError } = require("../errors");
+const { MAX_CHAT_HISTORY, ROOM_CODE_CHARS, ROOM_STATUS } = require("./room/constants");
+const {
+  buildPublicRoom,
+  buildRoomFromDbRow,
+  getUserSide,
+  now,
+  safeText,
+  sanitizeRoomCode,
+} = require("./room/helpers");
 const {
   GAME_STATUS,
   SIDES,
   applyMove,
-  cloneState,
   createInitialGameState,
 } = require("./chessEngine");
 const {
@@ -20,31 +28,7 @@ const {
   updateStatsForResult,
 } = require("../models/gameModel");
 
-const ROOM_STATUS = {
-  WAITING: "waiting",
-  PLAYING: "playing",
-  FINISHED: "finished",
-};
-
-const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const roomStore = new Map();
-
-function now() {
-  return new Date().toISOString();
-}
-
-function safeText(input, maxLength = 200) {
-  if (!input) {
-    return "";
-  }
-  return String(input).replace(/[<>]/g, "").trim().slice(0, maxLength);
-}
-
-function sanitizeRoomCode(code) {
-  return String(code || "")
-    .trim()
-    .toUpperCase();
-}
 
 function generateRoomCode(length = 6) {
   const size = Math.max(6, Math.min(8, length));
@@ -68,24 +52,6 @@ async function generateUniqueRoomCode() {
     }
   }
   throw new AppError(500, "房间号生成失败，请重试");
-}
-
-function buildPublicRoom(room) {
-  return {
-    roomCode: room.roomCode,
-    status: room.status,
-    hostUserId: room.hostUserId,
-    redUserId: room.redUserId,
-    blackUserId: room.blackUserId,
-    players: {
-      red: room.players.red,
-      black: room.players.black,
-    },
-    gameState: room.gameState,
-    chat: room.chat.slice(-100),
-    updatedAt: room.updatedAt,
-    createdAt: room.createdAt,
-  };
 }
 
 async function persistRoom(room) {
@@ -132,7 +98,7 @@ async function createRoom({ user, preferredSide }) {
   roomStore.set(roomCode, room);
   await ensureUserStats(user.id);
   await persistRoom(room);
-  return buildPublicRoom(room);
+  return buildPublicRoom(room, MAX_CHAT_HISTORY);
 }
 
 function getRoomOrThrow(code) {
@@ -144,24 +110,14 @@ function getRoomOrThrow(code) {
   return room;
 }
 
-function getUserSide(room, userId) {
-  if (room.redUserId === userId) {
-    return SIDES.RED;
-  }
-  if (room.blackUserId === userId) {
-    return SIDES.BLACK;
-  }
-  return null;
-}
-
 async function joinRoom({ roomCode, user }) {
   const room = getRoomOrThrow(roomCode);
-  const side = getUserSide(room, user.id);
+  const side = getUserSide(room, user.id, SIDES);
   if (side) {
     room.players[side] = { userId: user.id, username: user.username, online: true };
     room.updatedAt = now();
     await persistRoom(room);
-    return buildPublicRoom(room);
+    return buildPublicRoom(room, MAX_CHAT_HISTORY);
   }
   if (room.status !== ROOM_STATUS.WAITING) {
     throw new AppError(409, "房间已开局，无法加入");
@@ -176,7 +132,7 @@ async function joinRoom({ roomCode, user }) {
   room.updatedAt = now();
   await ensureUserStats(user.id);
   await persistRoom(room);
-  return buildPublicRoom(room);
+  return buildPublicRoom(room, MAX_CHAT_HISTORY);
 }
 
 async function makeMove({ roomCode, user, move, timestamp }) {
@@ -184,7 +140,7 @@ async function makeMove({ roomCode, user, move, timestamp }) {
   if (room.status !== ROOM_STATUS.PLAYING) {
     throw new AppError(409, "房间当前不在游戏中");
   }
-  const side = getUserSide(room, user.id);
+  const side = getUserSide(room, user.id, SIDES);
   if (!side) {
     throw new AppError(403, "你不是该房间玩家");
   }
@@ -211,7 +167,7 @@ async function makeMove({ roomCode, user, move, timestamp }) {
   await persistRoom(room);
 
   return {
-    room: buildPublicRoom(room),
+    room: buildPublicRoom(room, MAX_CHAT_HISTORY),
     moveRecord: result.moveRecord,
     events: result.events,
   };
@@ -247,7 +203,7 @@ async function finalizeRoomGame(room) {
 async function forceFinishRoom({ roomCode, winnerSide, reason }) {
   const room = getRoomOrThrow(roomCode);
   if (room.status === ROOM_STATUS.FINISHED) {
-    return buildPublicRoom(room);
+    return buildPublicRoom(room, MAX_CHAT_HISTORY);
   }
   room.gameState.status = GAME_STATUS.ENDED;
   room.gameState.winner = winnerSide;
@@ -272,7 +228,7 @@ async function forceFinishRoom({ roomCode, winnerSide, reason }) {
   room.endedAt = room.gameState.updatedAt;
   await finalizeRoomGame(room);
   await persistRoom(room);
-  return buildPublicRoom(room);
+  return buildPublicRoom(room, MAX_CHAT_HISTORY);
 }
 
 async function appendChat({ roomCode, user, message }) {
@@ -289,8 +245,8 @@ async function appendChat({ roomCode, user, message }) {
     timestamp: now(),
   };
   room.chat.push(chatEntry);
-  if (room.chat.length > 100) {
-    room.chat = room.chat.slice(-100);
+  if (room.chat.length > MAX_CHAT_HISTORY) {
+    room.chat = room.chat.slice(-MAX_CHAT_HISTORY);
   }
   room.updatedAt = now();
   await persistRoom(room);
@@ -299,7 +255,7 @@ async function appendChat({ roomCode, user, message }) {
 
 async function getRoomSnapshot(roomCode) {
   const room = getRoomOrThrow(roomCode);
-  return buildPublicRoom(room);
+  return buildPublicRoom(room, MAX_CHAT_HISTORY);
 }
 
 function markOnline(roomCode, userId, online) {
@@ -307,7 +263,7 @@ function markOnline(roomCode, userId, online) {
   if (!room) {
     return;
   }
-  const side = getUserSide(room, userId);
+  const side = getUserSide(room, userId, SIDES);
   if (!side || !room.players[side]) {
     return;
   }
@@ -338,38 +294,21 @@ function upsertRoomFromDbRow(row) {
   if (!row) {
     return;
   }
-  const room = {
-    roomCode: row.room_code,
-    hostUserId: row.host_user_id,
-    redUserId: row.red_user_id,
-    blackUserId: row.black_user_id,
-    players: {
-      red: row.red_user_id ? { userId: row.red_user_id, username: "红方", online: false } : null,
-      black: row.black_user_id
-        ? { userId: row.black_user_id, username: "黑方", online: false }
-        : null,
-    },
-    status: row.status,
-    gameState: row.game_state,
-    chat: [],
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    endedAt: row.ended_at || null,
-  };
+  const room = buildRoomFromDbRow(row);
   roomStore.set(room.roomCode, room);
 }
 
 async function recoverRoom(roomCode) {
   const normalized = sanitizeRoomCode(roomCode);
   if (roomStore.has(normalized)) {
-    return buildPublicRoom(roomStore.get(normalized));
+    return buildPublicRoom(roomStore.get(normalized), MAX_CHAT_HISTORY);
   }
   const row = await getRoomByCode(normalized);
   if (!row) {
     throw new AppError(404, "房间不存在");
   }
   upsertRoomFromDbRow(row);
-  return buildPublicRoom(roomStore.get(normalized));
+  return buildPublicRoom(roomStore.get(normalized), MAX_CHAT_HISTORY);
 }
 
 function getRoomStore() {

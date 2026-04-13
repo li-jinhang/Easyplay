@@ -10,7 +10,6 @@ const {
   forceFinishRoom,
   getRoomSnapshot,
   getRoomStore,
-  getUserSide,
   joinRoom,
   makeMove,
   markOnline,

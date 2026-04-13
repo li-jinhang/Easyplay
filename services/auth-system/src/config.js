@@ -36,7 +36,7 @@ const config = {
   NODE_ENV,
   IS_PRODUCTION: NODE_ENV === "production",
   HOST: process.env.HOST || "0.0.0.0",
-  PORT: toNumber(process.env.PORT, 3000),
+  PORT: toNumber(process.env.PORT, 26002),
   JWT_SECRET: process.env.JWT_SECRET || "replace-this-in-production",
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "2h",
   DB_PATH:

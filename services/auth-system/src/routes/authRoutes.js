@@ -1,6 +1,7 @@
 const express = require("express");
-const { body, validationResult } = require("express-validator");
+const { body } = require("express-validator");
 const { AppError } = require("../errors");
+const { asyncHandler, validate } = require("./_shared/routeUtils");
 const {
   createUser,
   findByEmail,
@@ -15,23 +16,6 @@ const {
 } = require("../services/authService");
 
 const router = express.Router();
-
-function asyncHandler(fn) {
-  return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
-}
-
-function validate(rules) {
-  return [
-    ...rules,
-    (req, res, next) => {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return next(new AppError(400, errors.array()[0].msg));
-      }
-      return next();
-    },
-  ];
-}
 
 const loginValidationRules = [
   body("username")
