@@ -51,6 +51,14 @@ describe("Frontend interaction integration", () => {
     expect(res.text).not.toContain('new EventSource("./__hmr")');
   });
 
+  test("GET /Easyplay/__hmr-client.js should use prefixed HMR endpoint under subpath deploy", async () => {
+    const res = await request(app).get("/Easyplay/__hmr-client.js");
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/javascript/);
+    expect(res.text).toContain('new EventSource("/Easyplay/__hmr")');
+  });
+
   test("GET /health should keep backend API available", async () => {
     const res = await request(app).get("/health");
 

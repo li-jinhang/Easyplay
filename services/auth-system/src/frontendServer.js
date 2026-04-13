@@ -9,17 +9,15 @@ const {
   STATIC_CACHE_MAX_AGE,
 } = require("./config");
 
-const HOT_RELOAD_SCRIPT = `
-<script src="/__hmr-client.js" defer></script>
-`;
-const HOT_RELOAD_CLIENT_SCRIPT = `(() => {
-  const source = new EventSource("/__hmr");
+const HOT_RELOAD_CLIENT_SCRIPT_TEMPLATE = `(() => {
+  const source = new EventSource("__HMR_ENDPOINT__");
   source.addEventListener("reload", () => window.location.reload());
 })();`;
 const HTML_PATH_CACHE_TTL_MS = IS_PRODUCTION ? 10000 : 1000;
 const MAX_HTML_PATH_CACHE_SIZE = 2048;
 const htmlPathCache = new Map();
-const FRONTEND_ROOT_NAME = path.basename(FRONTEND_ROOT).toLowerCase();
+const FRONTEND_ROOT_BASENAME = path.basename(FRONTEND_ROOT).trim();
+const FRONTEND_ROOT_NAME = FRONTEND_ROOT_BASENAME.toLowerCase();
 const HOT_RELOAD_EXTENSIONS = new Set([
   ".html",
   ".css",
@@ -95,6 +93,30 @@ function getPrefixedFallbackPath(requestPath) {
 
   const stripped = `/${segments.slice(1).join("/")}`;
   return stripped === "/" || stripped === "" ? "/" : stripped;
+}
+
+function getRequestBasePrefix(requestPath) {
+  if (!FRONTEND_ROOT_NAME) {
+    return "";
+  }
+  const segments = String(requestPath).split("/").filter(Boolean);
+  if (segments.length > 0 && segments[0].toLowerCase() === FRONTEND_ROOT_NAME) {
+    return `/${segments[0]}`;
+  }
+  return "";
+}
+
+function getHotReloadClientPath(requestPath) {
+  return `${getRequestBasePrefix(requestPath)}/__hmr-client.js`;
+}
+
+function createHotReloadScriptTag(requestPath) {
+  return `\n<script src="${getHotReloadClientPath(requestPath)}" defer></script>\n`;
+}
+
+function createHotReloadClientScript(requestPath) {
+  const endpoint = `${getRequestBasePrefix(requestPath)}/__hmr` || "/__hmr";
+  return HOT_RELOAD_CLIENT_SCRIPT_TEMPLATE.replace("__HMR_ENDPOINT__", endpoint);
 }
 
 function hasFrontendTarget(requestPath) {
@@ -197,20 +219,21 @@ function setCacheHeader(res, requestPath, isHtml) {
   res.setHeader("Cache-Control", "public, max-age=3600");
 }
 
-function sendHtmlFile(res, htmlFilePath, injectHotReload) {
+function sendHtmlFile(res, htmlFilePath, hotReloadRequestPath) {
   setCacheHeader(res, htmlFilePath, true);
   res.type("html");
 
-  if (!injectHotReload) {
+  if (!hotReloadRequestPath) {
     return res.sendFile(htmlFilePath);
   }
 
   return fs.promises
     .readFile(htmlFilePath, "utf8")
     .then((content) => {
+      const hotReloadScriptTag = createHotReloadScriptTag(hotReloadRequestPath);
       const injected = content.includes("</body>")
-        ? content.replace("</body>", `${HOT_RELOAD_SCRIPT}</body>`)
-        : `${content}${HOT_RELOAD_SCRIPT}`;
+        ? content.replace("</body>", `${hotReloadScriptTag}</body>`)
+        : `${content}${hotReloadScriptTag}`;
       res.status(200).send(injected);
     })
     .catch((error) => {
@@ -315,9 +338,13 @@ function registerFrontend(app, hotReloadManager) {
     app.get(/\/__hmr-client\.js$/, (req, res) => {
       res.type("application/javascript");
       res.setHeader("Cache-Control", "no-cache");
-      res.status(200).send(HOT_RELOAD_CLIENT_SCRIPT);
+      res.status(200).send(createHotReloadClientScript(req.path));
     });
   }
+
+  app.get(/\/favicon\.ico$/, (req, res) => {
+    res.status(204).end();
+  });
 
   app.use((req, res, next) => {
     if (!["GET", "HEAD"].includes(req.method) || req.path.startsWith("/api")) {
@@ -356,7 +383,8 @@ function registerFrontend(app, hotReloadManager) {
       return next();
     }
 
-    return sendHtmlFile(res, htmlPath, hotReloadManager.enabled);
+    const hotReloadRequestPath = hotReloadManager.enabled ? req.path : "";
+    return sendHtmlFile(res, htmlPath, hotReloadRequestPath);
   });
 
   app.use(
@@ -370,7 +398,8 @@ function registerFrontend(app, hotReloadManager) {
 
   app.get(/.*/, (req, res, next) => {
     if (!req.path.startsWith("/api") && !hasStaticAssetExt(req.path) && req.accepts("html")) {
-      return sendHtmlFile(res, FRONTEND_ENTRY_PATH, hotReloadManager.enabled);
+      const hotReloadRequestPath = hotReloadManager.enabled ? req.path : "";
+      return sendHtmlFile(res, FRONTEND_ENTRY_PATH, hotReloadRequestPath);
     }
     return next();
   });

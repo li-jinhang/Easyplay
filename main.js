@@ -51,6 +51,18 @@
         return String(url || "").replace(/\/+$/, "");
     }
 
+    function hasCookie(name) {
+        var cookie = document.cookie || "";
+        var pairs = cookie.split(";");
+        for (var i = 0; i < pairs.length; i += 1) {
+            var part = pairs[i].trim();
+            if (part.indexOf(name + "=") === 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function resolveApiBaseUrl() {
         var runtimeConfig = window.EASYPLAY_CONFIG || {};
         var configuredApiBase = runtimeConfig.API_BASE_URL;
@@ -463,6 +475,13 @@
         });
 
         validateRegisterInput();
+
+        var hasLocalToken = Boolean(localStorage.getItem("easyplay_token"));
+        var hasTokenCookie = hasCookie("token");
+        if (!hasLocalToken && !hasTokenCookie) {
+            setLoggedOutState();
+            return;
+        }
 
         getApi(
             "me",
