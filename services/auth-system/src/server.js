@@ -14,8 +14,7 @@ const {
   REQUEST_TIMEOUT,
 } = require("./config");
 const { initializeDatabase } = require("./db");
-const { hydrateRoomsFromDatabase } = require("./services/roomService");
-const { initGameSocket } = require("./websocket/gameSocket");
+const { attachGameRealtime, bootstrapGameDomain } = require("./modules/game");
 
 function createServer() {
   if (!ENABLE_HTTPS) {
@@ -39,14 +38,14 @@ function createServer() {
 
 async function bootstrap() {
   await initializeDatabase();
-  await hydrateRoomsFromDatabase();
+  await bootstrapGameDomain();
   const server = createServer();
-  const socketManager = initGameSocket(server);
+  const socketManager = attachGameRealtime(server);
   server.keepAliveTimeout = KEEP_ALIVE_TIMEOUT;
   server.requestTimeout = REQUEST_TIMEOUT;
   server.headersTimeout = REQUEST_TIMEOUT + 1000;
 
-  app.locals.hotReloadManager.startWatch();
+  app.locals.staticHosting.start();
 
   server.listen(PORT, HOST, () => {
     const protocol = ENABLE_HTTPS ? "https" : "http";
@@ -55,7 +54,7 @@ async function bootstrap() {
   });
 
   const shutdown = () => {
-    app.locals.hotReloadManager.stopWatch();
+    app.locals.staticHosting.stop();
     socketManager.close();
     server.close(() => process.exit(0));
   };

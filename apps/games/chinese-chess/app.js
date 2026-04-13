@@ -1,7 +1,8 @@
 (function () {
   "use strict";
 
-  var API_BASE = detectAppBasePath();
+  var APP_BASE_PATH = detectAppBasePath();
+  var API_BASE_URL = resolveApiBaseUrl(APP_BASE_PATH);
   var state = {
     token: "",
     me: null,
@@ -80,8 +81,26 @@
     return "/";
   }
 
-  function buildApiPath(path) {
-    return API_BASE + String(path || "").replace(/^\/+/, "");
+  function trimTrailingSlash(pathname) {
+    return String(pathname || "").replace(/\/+$/, "");
+  }
+
+  function resolveApiBaseUrl(appBasePath) {
+    var runtimeConfig = window.EASYPLAY_CONFIG || {};
+    var configuredApiBase = runtimeConfig.API_BASE_URL;
+    if (typeof configuredApiBase === "string" && configuredApiBase.trim()) {
+      return trimTrailingSlash(configuredApiBase);
+    }
+    return trimTrailingSlash(ensureTrailingSlash(appBasePath) + "api");
+  }
+
+  function buildApiUrl(path) {
+    var normalizedPath = String(path || "").replace(/^\/+/, "");
+    return API_BASE_URL + "/" + normalizedPath;
+  }
+
+  function buildRealtimePath(path) {
+    return APP_BASE_PATH + String(path || "").replace(/^\/+/, "");
   }
 
   function setMessage(text, isSuccess) {
@@ -109,8 +128,14 @@
     return getCookie("token");
   }
 
+  function clearAuthState() {
+    state.token = "";
+    state.me = null;
+    localStorage.removeItem("easyplay_token");
+  }
+
   function api(path, method, body) {
-    return fetch(buildApiPath(path), {
+    return fetch(buildApiUrl(path), {
       method: method || "GET",
       credentials: "include",
       headers: {
@@ -121,10 +146,26 @@
     }).then(function (res) {
       return res.json().then(function (data) {
         if (!res.ok) {
-          throw new Error((data && data.error) || "请求失败");
+          var error = new Error((data && data.error) || "请求失败");
+          error.status = res.status;
+          throw error;
         }
         return data;
+      }).catch(function (error) {
+        if (error && typeof error.status === "number") {
+          throw error;
+        }
+        var parseError = new Error("服务响应格式异常");
+        parseError.status = res.status;
+        throw parseError;
       });
+    }).catch(function (error) {
+      if (error && typeof error.status === "number") {
+        throw error;
+      }
+      var networkError = new Error("网络异常，请稍后重试");
+      networkError.status = 0;
+      throw networkError;
     });
   }
 
@@ -154,7 +195,10 @@
     }
     var protocol = location.protocol === "https:" ? "wss:" : "ws:";
     state.ws = new WebSocket(
-      protocol + "//" + location.host + buildApiPath("ws/game?token=" + encodeURIComponent(state.token))
+      protocol +
+        "//" +
+        location.host +
+        buildRealtimePath("ws/game?token=" + encodeURIComponent(state.token))
     );
 
     state.ws.onopen = function () {
@@ -385,7 +429,7 @@
   }
 
   function createRoom() {
-    api("api/game/rooms", "POST", { side: els.sideSelect.value })
+    api("game/rooms", "POST", { side: els.sideSelect.value })
       .then(function (data) {
         state.room = data.room;
         renderRoom();
@@ -406,7 +450,7 @@
       setMessage("请输入房间号", false);
       return;
     }
-    api("api/game/rooms/" + code + "/join", "POST", {})
+    api("game/rooms/" + code + "/join", "POST", {})
       .then(function (data) {
         state.room = data.room;
         renderRoom();
@@ -448,14 +492,20 @@
       els.authTip.textContent = "未检测到登录态，请先返回首页登录。";
       return Promise.reject(new Error("未登录"));
     }
-    return api("api/me", "GET")
+    localStorage.setItem("easyplay_token", state.token);
+    return api("me", "GET")
       .then(function (data) {
         state.me = data.user;
         els.authTip.textContent = "当前用户：" + state.me.username;
       })
-      .catch(function () {
-        els.authTip.textContent = "登录态失效，请返回首页重新登录。";
-        throw new Error("登录态失效");
+      .catch(function (error) {
+        if (error && error.status === 401) {
+          clearAuthState();
+          els.authTip.textContent = "登录态失效，请返回首页重新登录。";
+          throw new Error("登录态失效");
+        }
+        els.authTip.textContent = "认证状态校验失败，请检查网络后重试。";
+        throw new Error("认证校验失败");
       });
   }
 

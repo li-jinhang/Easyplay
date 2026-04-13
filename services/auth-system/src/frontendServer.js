@@ -13,13 +13,50 @@ const HOT_RELOAD_SCRIPT = `
 <script src="/__hmr-client.js" defer></script>
 `;
 const HOT_RELOAD_CLIENT_SCRIPT = `(() => {
-  const source = new EventSource("./__hmr");
+  const source = new EventSource("/__hmr");
   source.addEventListener("reload", () => window.location.reload());
 })();`;
 const HTML_PATH_CACHE_TTL_MS = IS_PRODUCTION ? 10000 : 1000;
 const MAX_HTML_PATH_CACHE_SIZE = 2048;
 const htmlPathCache = new Map();
 const FRONTEND_ROOT_NAME = path.basename(FRONTEND_ROOT).toLowerCase();
+const HOT_RELOAD_EXTENSIONS = new Set([
+  ".html",
+  ".css",
+  ".js",
+  ".mjs",
+  ".cjs",
+  ".json",
+  ".map",
+  ".svg",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".ico",
+]);
+const HOT_RELOAD_IGNORED_SEGMENTS = [
+  "node_modules",
+  ".git",
+  "coverage",
+  "services/auth-system/data",
+  "services/auth-system/tests",
+];
+
+function shouldTriggerHotReload(filename) {
+  if (!filename) {
+    return false;
+  }
+  const normalized = String(filename).replace(/\\/g, "/").toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  if (HOT_RELOAD_IGNORED_SEGMENTS.some((segment) => normalized.includes(segment))) {
+    return false;
+  }
+  return HOT_RELOAD_EXTENSIONS.has(path.extname(normalized));
+}
 
 function hasStaticAssetExt(requestPath) {
   return /\.[a-zA-Z0-9]+$/.test(requestPath);
@@ -184,6 +221,7 @@ function sendHtmlFile(res, htmlFilePath, injectHotReload) {
 function createHotReloadManager() {
   const clients = new Set();
   let watcher = null;
+  let reloadTimer = null;
 
   function sseHandler(req, res) {
     res.setHeader("Content-Type", "text/event-stream");
@@ -203,6 +241,16 @@ function createHotReloadManager() {
     }
   }
 
+  function scheduleReload() {
+    if (reloadTimer) {
+      return;
+    }
+    reloadTimer = setTimeout(() => {
+      reloadTimer = null;
+      broadcastReload();
+    }, 120);
+  }
+
   function startWatch() {
     if (IS_PRODUCTION || !DEV_HOT_RELOAD) {
       return;
@@ -216,11 +264,11 @@ function createHotReloadManager() {
         FRONTEND_ROOT,
         { recursive: true },
         (eventType, filename) => {
-          if (!filename || filename.includes("node_modules")) {
+          if (!filename || !shouldTriggerHotReload(filename)) {
             return;
           }
           if (eventType === "change" || eventType === "rename") {
-            broadcastReload();
+            scheduleReload();
           }
         }
       );
@@ -236,6 +284,10 @@ function createHotReloadManager() {
     if (watcher) {
       watcher.close();
       watcher = null;
+    }
+    if (reloadTimer) {
+      clearTimeout(reloadTimer);
+      reloadTimer = null;
     }
     for (const client of clients) {
       client.end();

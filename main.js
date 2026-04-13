@@ -2,6 +2,7 @@
     var USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,32}$/;
     var EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     var APP_BASE_PATH = getAppBasePath();
+    var API_BASE_URL = resolveApiBaseUrl();
 
     function ensureLeadingSlash(pathname) {
         if (!pathname) {
@@ -44,6 +45,24 @@
     function buildAppUrl(pathname) {
         var normalizedPath = String(pathname || "").replace(/^\/+/, "");
         return APP_BASE_PATH + normalizedPath;
+    }
+
+    function trimTrailingSlash(url) {
+        return String(url || "").replace(/\/+$/, "");
+    }
+
+    function resolveApiBaseUrl() {
+        var runtimeConfig = window.EASYPLAY_CONFIG || {};
+        var configuredApiBase = runtimeConfig.API_BASE_URL;
+        if (typeof configuredApiBase === "string" && configuredApiBase.trim()) {
+            return trimTrailingSlash(configuredApiBase);
+        }
+        return trimTrailingSlash(buildAppUrl("api"));
+    }
+
+    function buildApiUrl(pathname) {
+        var normalizedPath = String(pathname || "").replace(/^\/+/, "");
+        return API_BASE_URL + "/" + normalizedPath;
     }
 
     function initHomePage() {
@@ -127,13 +146,18 @@
             }
         }
 
-        function setLoggedInState(username) {
+        function setLoggedInState(username, token) {
             loginState.textContent = "当前登录用户：" + username;
             sessionStorage.setItem("easyplay_login_user", username);
+            if (typeof token === "string" && token) {
+                localStorage.setItem("easyplay_token", token);
+            }
         }
 
         function setLoggedOutState() {
             loginState.textContent = "当前未登录";
+            sessionStorage.removeItem("easyplay_login_user");
+            localStorage.removeItem("easyplay_token");
         }
 
         function validateLoginInput(username, password) {
@@ -228,46 +252,66 @@
             xhr.send(JSON.stringify(body));
         }
 
-        function postWithFallback(pathname, payload, onSuccess, onFail) {
-            var normalizedPath = String(pathname || "").replace(/^\/+/, "");
-            var endpoints = [];
+        function postApi(pathname, payload, onSuccess, onFail) {
+            postJson(buildApiUrl(pathname), payload, onSuccess, onFail);
+        }
 
-            function pushEndpoint(url) {
-                if (endpoints.indexOf(url) === -1) {
-                    endpoints.push(url);
-                }
+        function getApi(pathname, onSuccess, onFail) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", buildApiUrl(pathname), true);
+            xhr.withCredentials = true;
+            var token = localStorage.getItem("easyplay_token");
+            if (token) {
+                xhr.setRequestHeader("Authorization", "Bearer " + token);
             }
-
-            pushEndpoint(buildAppUrl(normalizedPath));
-            pushEndpoint("/" + normalizedPath);
-            pushEndpoint("http://localhost:3000/" + normalizedPath);
-
-            function tryNext(index) {
-                if (index >= endpoints.length) {
-                    onFail({
-                        status: 0,
-                        data: {
-                            error: "无法连接认证服务，请确认 npm 服务已启动。"
-                        }
-                    });
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState !== 4) {
                     return;
                 }
+                var data = {};
+                try {
+                    data = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+                } catch (e) {
+                    data = {};
+                }
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    onSuccess(data);
+                    return;
+                }
+                onFail({
+                    status: xhr.status,
+                    data: data
+                });
+            };
+            xhr.onerror = function () {
+                onFail({
+                    status: 0,
+                    data: {}
+                });
+            };
+            xhr.send();
+        }
 
-                postJson(
-                    endpoints[index],
-                    payload,
-                    onSuccess,
-                    function (err) {
-                        if (err.status === 0 && index < endpoints.length - 1) {
-                            tryNext(index + 1);
-                            return;
-                        }
-                        onFail(err);
-                    }
-                );
+        function notifyLoginStateChanged(username) {
+            if (typeof window.CustomEvent !== "function") {
+                return;
             }
+            window.dispatchEvent(new CustomEvent("easyplay:login-state-changed", {
+                detail: {
+                    username: username || ""
+                }
+            }));
+        }
 
-            tryNext(0);
+        function handleLoginSuccess(data, fallbackUsername) {
+            var user = data && data.user ? data.user : {};
+            var username = user.username || fallbackUsername || "";
+            var token = data && data.token ? data.token : "";
+            setMessage(loginMessage, data.message || "登录成功", true);
+            setLoggedInState(username, token);
+            closeModal(loginModal, openLoginBtn);
+            loginForm.reset();
+            notifyLoginStateChanged(username);
         }
 
         function handleRegisterSuccess(registeredUsername, message) {
@@ -304,15 +348,14 @@
             loginBtn.disabled = true;
             loginBtn.textContent = "登录中...";
 
-            postWithFallback(
-                "api/login",
+            postApi(
+                "login",
                 {
                     username: username,
                     password: password
                 },
                 function (data) {
-                    setMessage(loginMessage, data.message || "登录成功", true);
-                    setLoggedInState(username);
+                    handleLoginSuccess(data, username);
                     loginBtn.disabled = false;
                     loginBtn.textContent = "登录";
                 },
@@ -344,8 +387,8 @@
             registerBtn.disabled = true;
             registerBtn.textContent = "提交中...";
 
-            postWithFallback(
-                "api/register",
+            postApi(
+                "register",
                 payload,
                 function (data) {
                     registerForm.reset();
@@ -421,12 +464,26 @@
 
         validateRegisterInput();
 
-        var savedUser = sessionStorage.getItem("easyplay_login_user");
-        if (savedUser) {
-            setLoggedInState(savedUser);
-        } else {
-            setLoggedOutState();
-        }
+        getApi(
+            "me",
+            function (data) {
+                if (data && data.user && data.user.username) {
+                    setLoggedInState(data.user.username, localStorage.getItem("easyplay_token") || "");
+                    return;
+                }
+                setLoggedOutState();
+            },
+            function (err) {
+                if (err.status !== 401) {
+                    var savedUser = sessionStorage.getItem("easyplay_login_user");
+                    if (savedUser) {
+                        setLoggedInState(savedUser, localStorage.getItem("easyplay_token") || "");
+                        return;
+                    }
+                }
+                setLoggedOutState();
+            }
+        );
     }
 
     if (document.readyState === "loading") {

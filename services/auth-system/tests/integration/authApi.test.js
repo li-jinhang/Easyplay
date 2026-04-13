@@ -192,4 +192,31 @@ describe("Auth API integration", () => {
     expect(meRes.body.user.username).toBe("me_user");
     expect(meRes.body.user.email).toBe("me_user@example.com");
   });
+
+  test("GET /api/me should return current user by cookie session", async () => {
+    await request(app).post("/api/register").send({
+      username: "cookie_user",
+      email: "cookie_user@example.com",
+      password: "12345678",
+    });
+
+    const loginRes = await request(app).post("/api/login").send({
+      username: "cookie_user",
+      password: "12345678",
+    });
+    const cookies = loginRes.headers["set-cookie"];
+
+    const meRes = await request(app).get("/api/me").set("Cookie", cookies);
+    expect(meRes.statusCode).toBe(200);
+    expect(meRes.body.user.username).toBe("cookie_user");
+  });
+
+  test("GET /api/me should reject expired or invalid token", async () => {
+    const res = await request(app)
+      .get("/api/me")
+      .set("Authorization", "Bearer invalid.token.value");
+
+    expect(res.statusCode).toBe(401);
+    expect(res.body.error).toMatch(/认证失败|未登录/);
+  });
 });

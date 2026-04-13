@@ -4,7 +4,6 @@ const cookieParser = require("cookie-parser");
 const path = require("path");
 const {
   ENABLE_ACCESS_LOG,
-  ENABLE_FRONTEND,
   FRONTEND_ROOT,
   RATE_LIMIT_CLEANUP_INTERVAL_MS,
   RATE_LIMIT_MAX_BUCKETS,
@@ -12,14 +11,14 @@ const {
 } = require("./config");
 const { accessLogger } = require("./middleware/accessLogger");
 const { corsMiddleware } = require("./middleware/cors");
-const { createHotReloadManager, registerFrontend } = require("./frontendServer");
-const authRoutes = require("./routes/authRoutes");
-const gameRoutes = require("./routes/gameRoutes");
 const { createRateLimiter } = require("./middleware/rateLimit");
 const { errorHandler } = require("./middleware/errorHandler");
+const { registerAuthApi } = require("./modules/auth");
+const { registerGameApi } = require("./modules/game");
+const { createStaticHostingModule } = require("./modules/static-hosting");
 
 const app = express();
-const hotReloadManager = createHotReloadManager();
+const staticHosting = createStaticHostingModule();
 
 if (TRUST_PROXY) {
   app.set("trust proxy", 1);
@@ -50,8 +49,8 @@ apiRouter.use(
     maxBuckets: RATE_LIMIT_MAX_BUCKETS,
   })
 );
-apiRouter.use(authRoutes);
-apiRouter.use(gameRoutes);
+registerAuthApi(apiRouter);
+registerGameApi(apiRouter);
 
 app.use("/api", apiRouter);
 
@@ -60,12 +59,11 @@ if (frontendRootName) {
   app.use(`/${frontendRootName}/api`, apiRouter);
 }
 
-if (ENABLE_FRONTEND) {
-  registerFrontend(app, hotReloadManager);
-}
+staticHosting.register(app);
 
 app.use(errorHandler);
 
-app.locals.hotReloadManager = hotReloadManager;
+app.locals.staticHosting = staticHosting;
+app.locals.hotReloadManager = staticHosting.hotReloadManager;
 
 module.exports = app;

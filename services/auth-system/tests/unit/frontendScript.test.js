@@ -25,4 +25,22 @@ describe("frontend main.js unit checks", () => {
     expect(scriptContent).toContain('loginForm.addEventListener("submit"');
     expect(scriptContent).toContain('registerForm.addEventListener("submit"');
   });
+
+  test("should close login modal and persist auth token on login success", () => {
+    expect(scriptContent).toContain('localStorage.setItem("easyplay_token", token)');
+    expect(scriptContent).toContain("closeModal(loginModal, openLoginBtn)");
+    expect(scriptContent).toContain('window.dispatchEvent(new CustomEvent("easyplay:login-state-changed"');
+  });
+
+  test("should verify session via /api/me and clear stale auth state", () => {
+    expect(scriptContent).toContain('getApi(');
+    expect(scriptContent).toContain('"me"');
+    expect(scriptContent).toContain('localStorage.removeItem("easyplay_token")');
+  });
+
+  test("should use single API_BASE_URL without localhost fallback", () => {
+    expect(scriptContent).toContain("API_BASE_URL");
+    expect(scriptContent).not.toContain("localhost:3000");
+    expect(scriptContent).not.toContain("postWithFallback");
+  });
 });

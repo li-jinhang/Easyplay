@@ -28,6 +28,10 @@ describe("Frontend interaction integration", () => {
     expect(res.text).toContain("DOMContentLoaded");
     expect(res.text).toContain('addEventListener("click"');
     expect(res.text).toContain('querySelectorAll(".game-card[data-route]")');
+    expect(res.text).toContain("closeModal(loginModal, openLoginBtn)");
+    expect(res.text).toContain('localStorage.setItem("easyplay_token", token)');
+    expect(res.text).toContain('getApi(');
+    expect(res.text).toContain('"me"');
   });
 
   test("GET /Easyplay/main.js should map to frontend root script for subpath deploy", async () => {
@@ -36,6 +40,15 @@ describe("Frontend interaction integration", () => {
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toMatch(/javascript/);
     expect(res.text).toContain('querySelectorAll(".game-card[data-route]")');
+  });
+
+  test("GET /__hmr-client.js should use absolute HMR endpoint to avoid nested-path reconnect loops", async () => {
+    const res = await request(app).get("/__hmr-client.js");
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/javascript/);
+    expect(res.text).toContain('new EventSource("/__hmr")');
+    expect(res.text).not.toContain('new EventSource("./__hmr")');
   });
 
   test("GET /health should keep backend API available", async () => {
