@@ -3,6 +3,7 @@ ARG NODE_VERSION=20.19.0
 
 FROM node:${NODE_VERSION}-alpine AS base
 WORKDIR /app
+RUN sed -i 's#https\?://dl-cdn.alpinelinux.org/alpine#https://mirrors.aliyun.com/alpine#g' /etc/apk/repositories
 COPY package.json package-lock.json ./
 
 FROM base AS build
@@ -17,6 +18,7 @@ RUN npm run build \
 
 FROM node:${NODE_VERSION}-alpine AS runtime
 WORKDIR /app
+RUN sed -i 's#https\?://dl-cdn.alpinelinux.org/alpine#https://mirrors.aliyun.com/alpine#g' /etc/apk/repositories
 RUN apk add --no-cache libstdc++
 
 ENV NODE_ENV=production \
