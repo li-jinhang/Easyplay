@@ -1,19 +1,19 @@
+# syntax=docker/dockerfile:1.7
 ARG NODE_VERSION=20.19.0
 
 FROM node:${NODE_VERSION}-alpine AS base
 WORKDIR /app
 COPY package.json package-lock.json ./
 
-FROM base AS prod-deps
-RUN apk add --no-cache python3 make g++
-RUN npm ci --omit=dev \
-  && npm cache clean --force
-
 FROM base AS build
-RUN apk add --no-cache python3 make g++
-RUN npm ci
+RUN --mount=type=cache,target=/var/cache/apk \
+  apk add --no-cache python3 make g++
+RUN --mount=type=cache,target=/root/.npm \
+  npm ci
 COPY . .
-RUN npm run build
+RUN npm run build \
+  && npm prune --omit=dev \
+  && npm cache clean --force
 
 FROM node:${NODE_VERSION}-alpine AS runtime
 WORKDIR /app
@@ -27,7 +27,7 @@ ENV NODE_ENV=production \
   DEV_HOT_RELOAD=false \
   ENABLE_HTTPS=false
 
-COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist/ ./
 
 RUN mkdir -p /app/data \
