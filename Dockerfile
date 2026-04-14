@@ -1,28 +1,23 @@
 ARG NODE_VERSION=20.19.0
 
-FROM node:${NODE_VERSION}-bookworm-slim AS base
+FROM node:${NODE_VERSION}-alpine AS base
 WORKDIR /app
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl tini \
-  && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 
 FROM base AS prod-deps
+RUN apk add --no-cache python3 make g++
 RUN npm ci --omit=dev \
   && npm cache clean --force
 
 FROM base AS build
+RUN apk add --no-cache python3 make g++
 RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:${NODE_VERSION}-bookworm-slim AS runtime
+FROM node:${NODE_VERSION}-alpine AS runtime
 WORKDIR /app
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl tini \
-  && rm -rf /var/lib/apt/lists/* \
-  && groupadd --system easyplay \
-  && useradd --system --gid easyplay --home /app easyplay
+RUN apk add --no-cache libstdc++
 
 ENV NODE_ENV=production \
   HOST=0.0.0.0 \
@@ -36,16 +31,15 @@ COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist/ ./
 
 RUN mkdir -p /app/data \
-  && chown -R easyplay:easyplay /app
+  && chown -R node:node /app
 
 VOLUME ["/app/data"]
 EXPOSE 26002
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
-  CMD curl -fsS http://127.0.0.1:${PORT}/health || exit 1
+  CMD node -e "const http=require('http');const p=process.env.PORT||26002;const req=http.get({host:'127.0.0.1',port:p,path:'/health',timeout:2000},(res)=>process.exit(res.statusCode===200?0:1));req.on('error',()=>process.exit(1));req.on('timeout',()=>{req.destroy();process.exit(1);});"
 
-USER easyplay
-ENTRYPOINT ["/usr/bin/tini", "--"]
+USER node
 CMD ["node", "services/auth-system/src/server.js"]
 
 FROM build AS dev
