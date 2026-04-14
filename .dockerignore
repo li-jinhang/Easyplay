@@ -1,0 +1,36 @@
+# Dependencies and caches
+node_modules
+**/node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# VCS and editor
+.git
+.gitignore
+.vscode
+.idea
+
+# Build outputs and reports
+dist
+coverage
+**/coverage
+*.lcov
+
+# Runtime files
+*.log
+*.pid
+tmp
+temp
+*.tmp
+
+# Env and secrets
+.env
+.env.*
+!.env.example
+
+# Test and docs artifacts not needed in image build context
+services/**/tests
+docs
+services.zip
